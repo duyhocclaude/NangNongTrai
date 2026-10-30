@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d4a22">
+<title>Nàng Nông Trại</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+
+  <!-- Bảng thông tin góc trái trên -->
+  <div id="hud" class="hidden">
+    <div id="hudAvatar"><canvas id="avatarCv" width="72" height="72"></canvas></div>
+    <div class="hud-info">
+      <div class="hud-name"><span id="hudName">Tên</span><button id="btnRename" title="Đổi tên / trang phục">✎</button></div>
+      <div class="hud-lv"><span id="hudLv">Lv 1</span><div class="xpbar"><i id="hudXp"></i></div><span id="hudXpText">0/40</span></div>
+      <div class="hud-water" id="hudWaterRow">💧 Nước: <b id="hudWater">2.00</b> / 2.00 m³</div>
+      <div class="hud-time">🕖 <span id="hudTime">07:00</span> · Ngày <span id="hudDay">1</span></div>
+    </div>
+  </div>
+  <div id="moneyPill" class="hidden">💰 <span id="hudMoney">0đ</span></div>
+
+  <!-- Nút góc phải -->
+  <div id="topBtns" class="hidden">
+    <button class="rbtn" id="btnOrders" title="Đơn hàng">✉️<span class="badge" id="ordersBadge">0</span><small>Đơn hàng</small></button>
+    <button class="rbtn" id="btnShop" title="Cửa hàng">🏪<small>Cửa hàng</small></button>
+    <button class="rbtn" id="btnInv" title="Kho">📦<small>Kho</small></button>
+    <button class="rbtn" id="btnMenu" title="Menu">☰<small>Menu</small></button>
+  </div>
+  <div id="tracker" class="hidden">
+    <div class="trk-head" title="Kéo để di chuyển · lăn chuột hoặc chụm 2 ngón để phóng to/thu nhỏ">
+      <span class="trk-grip">⠿</span><span id="trkTitle">📋 Đơn đang làm</span>
+      <button data-trk="minus" title="Thu nhỏ">−</button><button data-trk="plus" title="Phóng to">+</button><button data-trk="fold" title="Thu gọn / mở rộng">▾</button>
+    </div>
+    <div id="trkList"></div>
+  </div>
+
+  <!-- Thanh công cụ -->
+  <div id="toolbar" class="hidden">
+    <button class="tool" data-tool="hand">✋<small>Tay</small></button>
+    <button class="tool" data-tool="seed"><span id="toolSeedIcon">🌱</span><small id="toolSeedName">Gieo hạt</small></button>
+    <button class="tool" data-tool="water">💧<small>Tưới</small></button>
+    <button class="tool" data-tool="fert">🧪<small id="toolFertName">Phân x2</small></button>
+    <button class="tool" data-tool="harvest">🧺<small>Thu hoạch</small></button>
+  </div>
+
+  <!-- Zoom vào nhân vật -->
+  <div id="zoomCtl" class="hidden">
+    <button data-zoom="in" title="Phóng to (phím +)">＋</button>
+    <span id="zoomLbl">1.0x</span>
+    <button data-zoom="out" title="Thu nhỏ (phím −)">－</button>
+    <button data-zoom="toggle" title="Bật/tắt zoom vào nhân vật (phím 0 để về 1x)">🔍</button>
+  </div>
+
+  <div id="toasts"></div>
+
+  <!-- Hộp thoại -->
+  <div id="modalBg" class="hidden">
+    <div id="modal">
+      <div id="modalHead"><h2 id="modalTitle"></h2><button id="modalClose" data-action="close">✕</button></div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Màn hình bắt đầu -->
+  <div id="start">
+    <div class="start-card">
+      <h1>Nàng Nông Trại <span>🌿</span></h1>
+      <p class="sub">Nhỏ nhắn nhưng luôn mang năng lượng tích cực cho khu vườn của mình!</p>
+      <div id="continueBox"></div>
+      <label class="lbl">Tên nhân vật</label>
+      <input id="startName" maxlength="16" placeholder="Nhập tên của bạn..." autocomplete="off">
+      <label class="lbl">Chọn trang phục</label>
+      <div id="startOutfits" class="outfits"></div>
+      <button id="btnStart" class="big">Bắt đầu chơi mới</button>
+    </div>
+  </div>
+</div>
+<!-- Nhắc xoay ngang trên điện thoại -->
+<div id="rotate" class="hidden">
+  <div class="rot-ic">📱↻</div>
+  <p>Hãy xoay ngang điện thoại để chơi nhé!</p>
+  <button class="big" id="btnFullscreen">⛶ Toàn màn hình &amp; xoay ngang</button>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
