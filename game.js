@@ -181,6 +181,44 @@ const nowAbs = () => (S.day - 1) * DAY_MIN + S.min;
 const SAVE_KEY = 'nangnongtrai_save_v1';
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ } }
 function loadGame() { try { const t = localStorage.getItem(SAVE_KEY); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+// ---------- Sao lưu ra file / khôi phục từ file ----------
+const BACKUP_TAG = 'NangNongTrai';
+function backupToFile() {
+  saveGame();
+  const d = new Date(), stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const blob = new Blob([JSON.stringify({ game: BACKUP_TAG, savedAt: d.toISOString(), data: S }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${BACKUP_TAG}_${S.name.replace(/[^\p{L}\p{N}]+/gu, '-')}_Lv${S.lv}_ngay${S.day}_${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('📥 Đã tải file sao lưu — hãy cất file này cẩn thận', 'good');
+}
+// nhận cả file sao lưu của game lẫn chuỗi JSON chép từ localStorage
+function parseBackup(text) {
+  let o; try { o = JSON.parse(text.trim()); } catch (e) { return null; }
+  const d = o && o.game === BACKUP_TAG && o.data ? o.data : o;
+  const ok = d && typeof d.name === 'string' && d.name && typeof d.money === 'number' && typeof d.lv === 'number' && Array.isArray(d.plots) && d.animals;
+  return ok ? d : null;
+}
+$('#restoreFile').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const d = parseBackup(String(rd.result));
+    if (!d) { toast('File không phải dữ liệu sao lưu của Nàng Nông Trại', 'bad'); SND.error(); return; }
+    const cur = S && R.started ? `\n\nTiến trình hiện tại (${S.name} · Lv ${S.lv} · Ngày ${S.day}) sẽ bị thay thế.` : '';
+    if (!confirm(`Khôi phục nhân vật "${d.name}" · Lv ${d.lv} · Ngày ${d.day} · ${money(d.money)}?${cur}`)) return;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (err) { /* vẫn chơi được, chỉ không lưu */ }
+    $('#modalBg').classList.add('hidden'); R.modal = null; R.queue = []; R.char.tx = null;
+    startGame(d);
+    toast(`📂 Đã khôi phục dữ liệu của ${d.name}!`, 'good');
+  };
+  rd.readAsText(f);
+});
+$('#btnRestoreStart').onclick = () => $('#restoreFile').click();
+
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* bỏ qua */ } }
 
 /* =========================================================
@@ -1357,6 +1395,8 @@ function openMenu() {
     <div class="toggle"><span>📖 Hướng dẫn chơi</span><button class="btn blue" data-action="help">Xem</button></div>
     <div class="toggle"><span>😴 Kết thúc ngày sớm (đi ngủ ngay)</span><button class="btn orange" data-action="endDay">Đi ngủ</button></div>
     <div class="toggle"><span>💾 Lưu game (tự động lưu mỗi 10 giây)</span><button class="btn" data-action="save">Lưu</button></div>
+    <div class="toggle"><span>📥 Sao lưu ra file (cất giữ / chuyển sang máy khác)</span><button class="btn blue" data-action="backup">Tải file</button></div>
+    <div class="toggle"><span>📂 Khôi phục từ file sao lưu</span><button class="btn orange" data-action="restore">Chọn file</button></div>
     <div class="toggle"><span>🔄 Chơi lại từ đầu</span><button class="btn red" data-action="newGame">Chơi mới</button></div>`, { kind: 'menu', narrow: true });
 }
 let charPick = 0;
@@ -1429,6 +1469,8 @@ const ACTIONS = {
   resetTrk: () => { S.ui.trk = { x: null, y: null, scale: 1, folded: false }; applyTracker(); saveGame(); toast('Đã đặt lại bảng đơn hàng', 'good'); },
   endDay: () => { if (confirm('Kết thúc ngày làm việc ngay bây giờ?')) { closeModal(); S.dayOver = true; showDayEnd(); } },
   save: () => { saveGame(); toast('Đã lưu game 💾', 'good'); },
+  backup: () => backupToFile(),
+  restore: () => $('#restoreFile').click(),
   newGame: () => {
     if (!confirm('Xoá toàn bộ tiến trình và chơi lại từ đầu?')) return;
     clearSave(); location.reload();
