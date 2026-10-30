@@ -10,6 +10,12 @@ Trồng cây, chăn nuôi, nhận đơn hàng từ đối tác và mở rộng n
 
 Chơi được trên máy tính và điện thoại (xoay ngang màn hình).
 
+### 🧪 Bản test
+
+Thêm `?test` vào cuối link (hoặc mở file `test.html`): bắt đầu với 100 triệu đồng, cấp 12, đủ 24 ô đất,
+chuồng đầy gia súc, mỗi vật phẩm 50 cái và phân bón 99 bao. Trong Menu có thêm công cụ test
+(cộng tiền, lên cấp, cây chín ngay, thêm đơn hàng, tua thời gian x10). Bản test lưu riêng, không ảnh hưởng bản chơi thật.
+
 ## 🎮 Tính năng
 
 - Đặt tên nhân vật (đổi lại được), hoạt ảnh đi 4 hướng, gieo hạt, tưới cây.
