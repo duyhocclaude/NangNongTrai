@@ -1388,6 +1388,8 @@ function sleep() {
 function openMenu() {
   openModal('☰ Menu', `
     <div class="toggle"><span>👧 Nhân vật: <b>${esc(S.name)}</b> — ${OUTFITS[S.outfit]}</span><button class="btn blue" data-action="openChar">Đổi tên / trang phục</button></div>
+    <div class="toggle" style="background:#eaf6ff;border-color:#64b5f6"><span>📥 <b>Sao lưu dữ liệu ra file</b><br><small class="muted">File .json lưu vào thư mục Tải xuống (Downloads)</small></span><button class="btn blue" data-action="backup">Tải file</button></div>
+    <div class="toggle" style="background:#fff4e5;border-color:#ffb74d"><span>📂 <b>Khôi phục từ file sao lưu</b></span><button class="btn orange" data-action="restore">Chọn file</button></div>
     <div class="toggle"><span>🎵 Nhạc nền</span><button class="btn ${S.settings.music ? '' : 'red'}" data-action="toggle" data-arg="music">${S.settings.music ? 'BẬT' : 'TẮT'}</button></div>
     <div class="toggle"><span>🔊 Âm thanh (gà gáy, chim hót, nước chảy...)</span><button class="btn ${S.settings.sfx ? '' : 'red'}" data-action="toggle" data-arg="sfx">${S.settings.sfx ? 'BẬT' : 'TẮT'}</button></div>
     <div class="toggle"><span>⛶ Toàn màn hình (điện thoại: tự xoay ngang)</span><button class="btn blue" data-action="fullscreen">Bật</button></div>
@@ -1395,8 +1397,6 @@ function openMenu() {
     <div class="toggle"><span>📖 Hướng dẫn chơi</span><button class="btn blue" data-action="help">Xem</button></div>
     <div class="toggle"><span>😴 Kết thúc ngày sớm (đi ngủ ngay)</span><button class="btn orange" data-action="endDay">Đi ngủ</button></div>
     <div class="toggle"><span>💾 Lưu game (tự động lưu mỗi 10 giây)</span><button class="btn" data-action="save">Lưu</button></div>
-    <div class="toggle"><span>📥 Sao lưu ra file (cất giữ / chuyển sang máy khác)</span><button class="btn blue" data-action="backup">Tải file</button></div>
-    <div class="toggle"><span>📂 Khôi phục từ file sao lưu</span><button class="btn orange" data-action="restore">Chọn file</button></div>
     <div class="toggle"><span>🔄 Chơi lại từ đầu</span><button class="btn red" data-action="newGame">Chơi mới</button></div>`, { kind: 'menu', narrow: true });
 }
 let charPick = 0;
