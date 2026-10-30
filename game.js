@@ -3,6 +3,9 @@
    NÀNG NÔNG TRẠI — game nông trại 2D (HTML5 Canvas)
    ========================================================= */
 
+// Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
+const GAME_VERSION = '1.3.0';
+
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
 const DAY_START_HOUR = 7;           // 7h sáng
@@ -1397,7 +1400,8 @@ function openMenu() {
     <div class="toggle"><span>📖 Hướng dẫn chơi</span><button class="btn blue" data-action="help">Xem</button></div>
     <div class="toggle"><span>😴 Kết thúc ngày sớm (đi ngủ ngay)</span><button class="btn orange" data-action="endDay">Đi ngủ</button></div>
     <div class="toggle"><span>💾 Lưu game (tự động lưu mỗi 10 giây)</span><button class="btn" data-action="save">Lưu</button></div>
-    <div class="toggle"><span>🔄 Chơi lại từ đầu</span><button class="btn red" data-action="newGame">Chơi mới</button></div>`, { kind: 'menu', narrow: true });
+    <div class="toggle"><span>🔄 Chơi lại từ đầu</span><button class="btn red" data-action="newGame">Chơi mới</button></div>
+    <div class="muted" style="text-align:center">Phiên bản ${GAME_VERSION}</div>`, { kind: 'menu', narrow: true });
 }
 let charPick = 0;
 function openChar() {
