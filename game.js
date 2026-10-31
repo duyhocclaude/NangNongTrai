@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.5.1';
+const GAME_VERSION = '1.5.2';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
