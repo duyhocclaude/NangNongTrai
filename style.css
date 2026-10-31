@@ -219,3 +219,11 @@ body.mobile .btn { padding: 6px 14px; }
 @keyframes rot { 50% { transform: rotate(-90deg); } }
 #rotate .big { font-size: 18px; padding: 10px 22px; }
 .toggle { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 2px solid #e6d3b0; border-radius: 12px; padding: 6px 12px; margin-bottom: 6px; }
+
+/* ---------- Coop: ghé thăm nông trại bạn ---------- */
+#coopBanner {
+  position: absolute; left: 50%; top: 84px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 8px;
+  background: rgba(255,244,229,.96); border: 3px solid #ffb74d; border-radius: 16px; padding: 4px 8px 4px 14px; font-size: 15px; color: #6b3f1d;
+  box-shadow: 0 3px 0 #c56f10; white-space: nowrap;
+}
+body.mobile #coopBanner { transform: translateX(-50%) scale(1.3); transform-origin: 50% 0; top: 140px; }

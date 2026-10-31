@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.4.1';
+const GAME_VERSION = '1.5.0';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -1422,6 +1422,7 @@ function showHelp() {
     <p>🐔 <b>Chăn nuôi:</b> mua gia súc ở Cửa hàng, bấm vào chuồng để cho ăn, đợi rồi thu trứng, sữa, lông cừu... <b>Gà ăn 🌾 lúa mì</b> trong kho (1 bó/con) — lúa mì rẻ nhất, lớn nhanh, mỗi ô thu 2 bó.</p>
     <p>💰 <b>Kiếm tiền:</b> bán nông sản trong Kho, hoặc nhận <b>đơn hàng</b> ✉️ từ đối tác — giao đúng hạn để nhận tiền + VAT 15% + kinh nghiệm. Trễ hạn sẽ bị trừ tiền.</p>
     <p>🪧 <b>Mở rộng đất:</b> bạn có ${START_PLOTS} ô đất ban đầu. Bấm vào ô có biển 🪧 để mua thêm (từ ${money(plotPrice(START_PLOTS))}, ô sau đắt hơn ô trước ${money(10000)}). Mỗi cấp cho phép mua thêm 2 ô.</p>
+    <p>👥 <b>Bạn bè:</b> gửi mã nông trại cho bạn bè hoặc nhập mã của họ để ghé thăm — tưới giúp ô đang khát nước 💧 và tặng quà 🎁.</p>
     <p>⭐ Lên cấp để mở khoá cây trồng, vật nuôi, phân bón và quyền mua thêm ô đất.</p></div>
     <div style="text-align:center"><button class="btn" data-action="close">Bắt đầu thôi!</button></div>`, { kind: 'help' });
 }
