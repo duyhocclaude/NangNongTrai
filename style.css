@@ -96,7 +96,7 @@ button { font-family: inherit; cursor: pointer; }
 #zoomLbl { font-size: 12px; font-weight: 800; color: #6b3f1d; }
 
 /* ---------- Toast ---------- */
-#toasts { position: absolute; left: 50%; top: 90px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+#toasts { position: absolute; z-index: 50; left: 50%; top: 90px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .toast {
   background: rgba(60,40,20,.88); color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 16px; font-weight: 600;
   animation: tin .25s ease-out, tout .4s ease-in 2.6s forwards;
@@ -108,7 +108,7 @@ button { font-family: inherit; cursor: pointer; }
 @keyframes tout { to { opacity: 0; transform: translateY(-10px); } }
 
 /* ---------- Modal ---------- */
-#modalBg { position: absolute; inset: 0; background: rgba(30,20,10,.45); display: flex; align-items: center; justify-content: center; z-index: 20; }
+#modalBg { position: absolute; inset: 0; background: rgba(30,20,10,.45); display: flex; align-items: center; justify-content: center; z-index: 35; }
 #modal {
   width: 720px; max-height: 640px; background: #fff8ea; border: 4px solid #b5834f; border-radius: 22px; box-shadow: 0 6px 0 #8a5a33, 0 12px 30px rgba(0,0,0,.4);
   display: flex; flex-direction: column; overflow: hidden;

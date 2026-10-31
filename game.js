@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.6.0';
+const GAME_VERSION = '1.7.0';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -97,6 +97,7 @@ const FISH = {
   ca_tram:     { name: 'Cá trắm',     icon: '🐟', lv: 3, w: 14, sell: 6000,  xp: 3 },
   cua:         { name: 'Cua đồng',    icon: '🦀', lv: 4, w: 10, sell: 8000,  xp: 3 },
   ca_loc:      { name: 'Cá lóc',      icon: '🐟', lv: 5, w: 7,  sell: 12000, xp: 4 },
+  con_sua:     { name: 'Con sứa',     icon: '🪼', lv: 6, w: 5,  sell: 15000, xp: 5 },
   ca_koi:      { name: 'Cá koi',      icon: '🐠', lv: 7, w: 3,  sell: 35000, xp: 8 },
   ca_than_tai: { name: 'Cá thần tài', icon: '🐡', lv: 9, w: 1,  sell: 90000, xp: 15 },
 };
@@ -107,6 +108,14 @@ const RODS = [null,
 ];
 const BAIT_PRICE = 500;      // mỗi mồi câu
 const FISH_PER_DAY = 15;     // ao chỉ có chừng ấy cá mỗi ngày
+// máy chưa có emoji sứa 🪼 (Emoji 15) thì dùng 🎐 cho khỏi hiện ô vuông
+(() => {
+  try {
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = '32px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    if (c.measureText('🪼').width > c.measureText('🐟').width * 1.4) FISH.con_sua.icon = '🎐';
+  } catch (e) { /* giữ nguyên */ }
+})();
 for (const k in FISH) ITEMS[k] = { name: FISH[k].name, icon: FISH[k].icon, sell: FISH[k].sell, xp: FISH[k].xp, time: 9999, fish: true };
 
 // Nước (đơn vị m³ = khối)
@@ -1333,7 +1342,9 @@ function openModal(title, html, opts = {}) {
 }
 function closeModal() {
   if (S && S.dayOver) return;
-  $('#modalBg').classList.add('hidden'); R.modal = null; R.paused = false; updateToolbar(); updateHUD(true);
+  $('#modalBg').classList.add('hidden'); R.modal = null;
+  if (!R.started || !S) return;                  // hộp thoại mở từ màn hình bắt đầu
+  R.paused = false; updateToolbar(); updateHUD(true);
 }
 
 function openSeedPicker() {

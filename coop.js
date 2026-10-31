@@ -50,9 +50,17 @@
       session = r.data.session;
     }
     const uid = session.user.id;
+    let accessToken = session.access_token;
+    sb.auth.onAuthStateChange((ev, s) => { if (s) accessToken = s.access_token; });
     const chk = r => { if (r.error) throw new Error(r.error.message); return r.data; };
     return {
       uid,
+      rpc: async (fn, args) => chk(await sb.rpc(fn, args)),
+      // gửi được cả khi đang đóng trang (pagehide)
+      rpcKeepalive: (fn, args) => fetch(`${cfg.url}/rest/v1/rpc/${fn}`, {
+        method: 'POST', keepalive: true, body: JSON.stringify(args),
+        headers: { apikey: cfg.anonKey, Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      }).catch(() => {}),
       claimFarm: async code => {
         const ins = await sb.from('farms').insert({ code, owner: uid });
         if (!ins.error) return true;
@@ -81,17 +89,27 @@
     };
   }
 
+  // Kết nối Supabase dùng chung (bạn bè + tài khoản mã cá nhân)
+  let netPromise = null;
+  C.enabled = () => !!window.COOP_BACKEND || !!(window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.anonKey);
+  C.getNet = () => {
+    if (C.net) return Promise.resolve(C.net);
+    if (!C.enabled()) return Promise.reject(new Error('Game chưa có cấu hình Supabase'));
+    if (!netPromise) netPromise = (window.COOP_BACKEND ? window.COOP_BACKEND() : supabaseBackend(window.SUPABASE_CONFIG))
+      .then(n => { C.net = n; C.uid = n.uid; return n; }, e => { netPromise = null; throw e; });
+    return netPromise;
+  };
+
   async function connect() {
-    if (C.net || C.status === 'loading') return;
-    const cfg = window.SUPABASE_CONFIG;
-    if (!(cfg && cfg.url && cfg.anonKey) && !window.COOP_BACKEND) { C.status = 'off'; return; }
+    if (C.status === 'ready' || C.status === 'loading') return;
+    if (!C.enabled()) { C.status = 'off'; return; }
     C.status = 'loading'; refreshPanel();
     try {
-      C.net = window.COOP_BACKEND ? await window.COOP_BACKEND() : await supabaseBackend(cfg);
-      C.uid = C.net.uid; C.status = 'ready';
+      await C.getNet();
+      C.status = 'ready';
       await ensureMyFarm();
     } catch (e) {
-      C.status = 'error'; C.error = e && e.message || String(e); C.net = null;
+      C.status = 'error'; C.error = e && e.message || String(e);
       console.warn('Coop:', e);
     }
     refreshPanel();
@@ -418,7 +436,7 @@
     coopForget: code => { S.coop.friends = S.coop.friends.filter(f => f.code !== code); saveGame(); openPanel(); },
     coopLeave: () => { closeModal(); leave(); },
     coopGift: a => { const [k, n] = a.split('|'); sendGift(k, +n); },
-    coopRetry: () => { C.status = 'off'; C.net = null; connect(); },
+    coopRetry: () => { C.status = 'off'; connect(); },
   });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'coopCode') visit(e.target.value); });
 

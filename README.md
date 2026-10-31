@@ -20,7 +20,7 @@ Chơi được trên máy tính và điện thoại (xoay ngang màn hình).
 - Nước tính theo m³, nạp lại có phí (thêm phí bơm gấp khi để bể cạn).
 - Đơn hàng từ đối tác: nhận / từ chối, có hạn giao, **hoá đơn VAT 15%**, giao trễ bị trừ tiền.
 - Mua thêm ô đất để mở rộng nông trại.
-- Câu cá ở ao: 9 loài giá khác nhau (cá rô 1.500đ … cá thần tài 90.000đ), cần câu tre / carbon, mồi câu, 15 lượt mỗi ngày.
+- Câu cá ở ao: 10 loài giá khác nhau (cá rô 1.500đ, con sứa 15.000đ … cá thần tài 90.000đ), cần câu tre / carbon, mồi câu, 15 lượt mỗi ngày.
 - Tiền tệ: Việt Nam đồng. Âm thanh tự tổng hợp: nhạc nền, gà gáy, chim hót, nước chảy...
 - Zoom vào nhân vật, bảng đơn hàng kéo thả / phóng to thu nhỏ.
 
@@ -61,3 +61,12 @@ Tính năng này cần một dự án [Supabase](https://supabase.com) miễn ph
 5. Điền 2 giá trị đó vào [`supabase-config.js`](supabase-config.js) (thay `null`).
 
 Dự án Supabase miễn phí sẽ tạm dừng nếu 7 ngày không ai chơi; vào Dashboard bấm **Restore** để bật lại.
+
+## ☁️ Mã cá nhân — lưu game lên mây
+
+Menu → **☁️ Mã cá nhân → Tạo mã**, đặt mật khẩu → nhận mã dạng `NT-XXXX-XXXX`.
+Trên máy khác: màn hình bắt đầu → **☁️ Đăng nhập bằng mã cá nhân**. Game tự lưu lên mây mỗi 30 giây;
+nếu 2 máy cùng chơi một mã, game hỏi giữ bản nào chứ không âm thầm ghi đè. Mã nông trại cho bạn bè giữ nguyên khi đổi máy.
+
+Cần chạy thêm [`supabase-account.sql`](supabase-account.sql) trong SQL Editor (sau `supabase-setup.sql`).
+Mật khẩu được băm bằng bcrypt trên máy chủ; sai 5 lần liên tiếp thì khoá 15 phút.
