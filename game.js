@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.5.3';
+const GAME_VERSION = '1.6.0';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -85,6 +85,29 @@ const FERTS = {
   f3: { name: 'Phân bón x3', short: 'x3', mult: 3, price: 12000, lv: 3, color: '#ffb300' },
   f5: { name: 'Phân bón x5', short: 'x5', mult: 5, price: 25000, lv: 5, color: '#e53935' },
 };
+
+// ---------- Câu cá ở ao ----------
+// w = độ phổ biến (càng lớn càng dễ câu). Cân đối: cần câu tre ở cấp 1 trung bình ~1.900đ/lượt (trừ mồi còn ~1.400đ),
+// mỗi ngày tối đa FISH_PER_DAY lượt -> câu cá là nguồn tiền phụ, không thay được trồng trọt.
+const FISH = {
+  ca_ro:       { name: 'Cá rô',       icon: '🐟', lv: 1, w: 40, sell: 1500,  xp: 1 },
+  ca_chep:     { name: 'Cá chép',     icon: '🎏', lv: 1, w: 26, sell: 3000,  xp: 2 },
+  giay_cu:     { name: 'Giày cũ',     icon: '👢', lv: 1, w: 6,  sell: 200,   xp: 0 },
+  tom:         { name: 'Tôm càng',    icon: '🦐', lv: 2, w: 18, sell: 4500,  xp: 2 },
+  ca_tram:     { name: 'Cá trắm',     icon: '🐟', lv: 3, w: 14, sell: 6000,  xp: 3 },
+  cua:         { name: 'Cua đồng',    icon: '🦀', lv: 4, w: 10, sell: 8000,  xp: 3 },
+  ca_loc:      { name: 'Cá lóc',      icon: '🐟', lv: 5, w: 7,  sell: 12000, xp: 4 },
+  ca_koi:      { name: 'Cá koi',      icon: '🐠', lv: 7, w: 3,  sell: 35000, xp: 8 },
+  ca_than_tai: { name: 'Cá thần tài', icon: '🐡', lv: 9, w: 1,  sell: 90000, xp: 15 },
+};
+// window = số giây để giật câu khi phao chìm; rare = nhân độ dễ câu loài quý (giá >= 8.000đ)
+const RODS = [null,
+  { name: 'Cần câu tre',    price: 20000,  lv: 1, window: 1.0, rare: 1 },
+  { name: 'Cần câu carbon', price: 100000, lv: 5, window: 1.5, rare: 1.8 },
+];
+const BAIT_PRICE = 500;      // mỗi mồi câu
+const FISH_PER_DAY = 15;     // ao chỉ có chừng ấy cá mỗi ngày
+for (const k in FISH) ITEMS[k] = { name: FISH[k].name, icon: FISH[k].icon, sell: FISH[k].sell, xp: FISH[k].xp, time: 9999, fish: true };
 
 // Nước (đơn vị m³ = khối)
 const WATER = {
@@ -171,6 +194,7 @@ function newState(name, outfit) {
     animals: { ga: [], vit: [], de: [], bo: [], cuu: [] },
     plotsOwned: START_PLOTS,
     inv: {}, ferts: { f2: 1, f3: 0, f5: 0 },
+    rod: 0, bait: 0, fishLeft: FISH_PER_DAY,
     offers: [], orders: [], nextId: 1, invoiceNo: 1, nextOfferAt: 20,
     tool: 'hand', seed: 'cai', fert: 'f2',
     stats: { income: 0, expense: 0, harvest: 0, delivered: 0 },
@@ -820,11 +844,102 @@ function cancelOrder(id) {
 /* =========================================================
    CẬP NHẬT
    ========================================================= */
+/* ----- Câu cá -----
+   Bấm vào ao -> đi ra mép ao -> quăng câu -> chờ phao chìm (❗) -> bấm ao / phím Space trong khoảng
+   thời gian của cần câu để giật. Bấm chỗ khác khi chưa có cá cắn thì thôi câu (được trả lại mồi). */
+const inPond = (x, y, k = 1) => ((x - POND.x) / (POND.rx * k)) ** 2 + ((y - POND.y) / (POND.ry * k)) ** 2 <= 1;
+function fishSpot(px, py) {
+  // phao: điểm bấm, kéo vào trong lòng ao; chỗ đứng: mép ao phía nhân vật
+  let bx = px, by = py;
+  if (!inPond(bx, by, 0.8)) { const a = Math.atan2((by - POND.y) / POND.ry, (bx - POND.x) / POND.rx); bx = POND.x + Math.cos(a) * POND.rx * 0.75; by = POND.y + Math.sin(a) * POND.ry * 0.75; }
+  const a = Math.atan2((R.char.y - POND.y) / (POND.ry + 30), (R.char.x - POND.x) / (POND.rx + 30));
+  const sx = clamp(POND.x + Math.cos(a) * (POND.rx + 26), 24, W - 24), sy = clamp(POND.y + Math.sin(a) * (POND.ry + 22), 196, H - 6);
+  return { bx, by, sx, sy };
+}
+function goFishing(px, py) {
+  const rod = RODS[S.rod];
+  if (!rod) { toast('Bạn cần mua 🎣 cần câu ở Cửa hàng trước', 'bad'); openShop('fish'); return; }
+  if (S.fishLeft <= 0) { toast('Hôm nay ao đã hết cá, mai quay lại nhé 🐟'); return; }
+  const sp = fishSpot(px, py);
+  R.queue = []; R.char.tx = null; R.fish = null;
+  R.queue.push({ at: performance.now(), key: 'fish', x: sp.sx, y: sp.sy, fn: () => castLine(sp) });
+}
+function castLine(sp) {
+  if (S.fishLeft <= 0) return;
+  if (!S.bait) {                                   // hết mồi -> tự mua 1
+    if (!spend(BAIT_PRICE)) return;
+    floater(R.char.x, R.char.y - 110, `Mua mồi −${money(BAIT_PRICE)}`, '#ffcdd2');
+  } else S.bait--;
+  R.char.dir = sp.bx >= R.char.x ? 1 : -1; R.char.face = R.char.dir > 0 ? 'right' : 'left';
+  R.fish = { phase: 'cast', t: 0, biteAt: rand(2.5, 7), bx: sp.bx, by: sp.by, win: RODS[S.rod].window };
+  SND.cast();
+}
+function stopFishing(refund) {
+  if (!R.fish) return;
+  if (refund && R.fish.phase !== 'bite') S.bait++;
+  R.fish = null;
+}
+function rollFish() {
+  const rod = RODS[S.rod], pool = Object.entries(FISH).filter(([, f]) => f.lv <= S.lv);
+  const wt = f => f.w * (f.sell >= 8000 ? rod.rare : 1);
+  let r = Math.random() * pool.reduce((s, [, f]) => s + wt(f), 0);
+  for (const [k, f] of pool) { r -= wt(f); if (r <= 0) return k; }
+  return pool[0][0];
+}
+function tryHook() {
+  const f = R.fish; if (!f) return false;
+  if (f.phase !== 'bite') { floater(f.bx, f.by - 30, 'Chờ phao chìm đã!', '#fff'); return true; }
+  const k = rollFish(), fi = FISH[k];
+  addInv(k, 1); S.fishLeft--; S.stats.fish = (S.stats.fish || 0) + 1;
+  floater(f.bx, f.by - 20, `+1 ${fi.icon} ${fi.name} (${money(fi.sell)})`, '#fff');
+  if (fi.xp) gainXp(fi.xp, R.char.x, R.char.y - 100);
+  if (fi.sell >= 30000) { toast(`🎉 Câu được ${fi.icon} ${fi.name}! Bán được ${money(fi.sell)}`, 'big'); SND.levelup(); }
+  else if (k === 'giay_cu') toast('👢 Ôi, câu phải chiếc giày cũ...');
+  SND.splash();
+  for (let i = 0; i < 6; i++) R.ripples.push({ x: f.bx + rand(-12, 12), y: f.by + rand(-6, 6), t: 0 });
+  R.fish = null;
+  if (S.fishLeft > 0) floater(R.char.x, R.char.y - 125, `🎣 Còn ${S.fishLeft} lượt hôm nay`, '#e3f2fd');
+  return true;
+}
+function updateFishing(dt) {
+  const f = R.fish; if (!f) return;
+  if ((window.COOP_VISIT && COOP_VISIT.active) || R.queue.length || R.char.tx !== null || R.char.moving) { stopFishing(true); return; }
+  f.t += dt;
+  if (f.phase === 'cast' && f.t > 0.45) { f.phase = 'wait'; f.t = 0; R.ripples.push({ x: f.bx, y: f.by, t: 0 }); SND.plop(); }
+  else if (f.phase === 'wait' && f.t > f.biteAt) { f.phase = 'bite'; f.t = 0; SND.plop(); SND.plop(0.12); }
+  else if (f.phase === 'bite' && f.t > f.win) {
+    floater(f.bx, f.by - 20, 'Cá chạy mất rồi! 💨', '#ffcdd2'); SND.error(); R.fish = null;
+  }
+}
+function drawFishing() {
+  const f = R.fish; if (!f) return;
+  const ch = R.char, d = ch.dir, hx = ch.x + d * 10, hy = ch.y - 58, tx = ch.x + d * 52, ty = ch.y - 112;
+  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+  // phao bay ra khi quăng, chìm xuống khi cá cắn
+  const k = f.phase === 'cast' ? Math.min(1, f.t / 0.45) : 1;
+  const bob = f.phase === 'bite' ? 4 + Math.sin(f.t * 30) * 3 : Math.sin(R.time * 3) * 1.2;
+  const bx = tx + (f.bx - tx) * k, by = ty + (f.by - ty) * k - Math.sin(k * Math.PI) * 40 + bob;
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo((tx + bx) / 2, Math.max(ty, by) + 20, bx, by); ctx.stroke();
+  ctx.fillStyle = '#e53935'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, 0, Math.PI); ctx.fill();
+  if (f.phase === 'bite') {
+    bubble(f.bx, f.by - 34 - Math.abs(Math.sin(f.t * 12)) * 4, '❗');
+    ctx.fillStyle = '#ffeb3b'; ctx.fillRect(f.bx - 22, f.by - 58, 44 * (1 - f.t / f.win), 5);
+  }
+}
+Object.assign(SND, {
+  cast() { this.sweep(1400, 300, 0.35, 'sine', 0.12); this.noiseBurst(0.3, 2500, 1, 0.12); },
+  plop(t0 = 0) { this.sweep(420, 130, 0.12, 'sine', 0.35, t0); },
+  splash() { this.noiseBurst(0.5, 900, 0.7, 0.35); for (let i = 0; i < 5; i++) this.sweep(rand(400, 800), rand(900, 1400), 0.06, 'sine', 0.12, i * 0.07); },
+});
+
 function update(dt) {
   R.time += dt;
   updateChar(dt);
   updateAmbient(dt);
   if (!R.started || R.paused || R.portrait || S.dayOver) return;
+  updateFishing(dt);
 
   const g = dt * GM_PER_SEC;
   S.min += g;
@@ -1001,6 +1116,7 @@ function draw() {
   emoji(ctx, '🐕', R.dog.x, R.dog.y - 14 + (Math.abs(Math.sin(R.time * 8)) * -2), 30, R.dog.dir < 0);
   drawQueueMarks();
   drawChar();
+  drawFishing();
   (R.overlays || []).forEach(f => f());
   // chữ bay
   R.floaters.forEach(f => {
@@ -1273,7 +1389,7 @@ function openBuyPlot(i) {
 }
 
 function openShop(tab = 'seeds') {
-  const tabs = [['seeds', '🌱 Hạt giống'], ['fert', '🧪 Phân bón'], ['animals', '🐄 Vật nuôi'], ['water', '💧 Nước']];
+  const tabs = [['seeds', '🌱 Hạt giống'], ['fert', '🧪 Phân bón'], ['animals', '🐄 Vật nuôi'], ['fish', '🎣 Câu cá'], ['water', '💧 Nước']];
   let body = '';
   if (tab === 'seeds') {
     body = `<p class="muted">Chọn loại hạt cho công cụ 🌱 Gieo hạt. Tiền hạt trừ khi gieo.</p><div class="grid">` + Object.entries(CROPS).map(([k, c]) => {
@@ -1297,6 +1413,18 @@ function openShop(tab = 'seeds') {
       <div class="meta">Giá ${money(a.price)} · Thức ăn ${a.feedItem ? `${a.feedQty} ${CROPS[a.feedItem].icon} ${CROPS[a.feedItem].name}` : money(a.feed)}/lần<br>${pr.icon} ${pr.name}: ${money(pr.sell)} mỗi ${realDur(a.time)}</div>
       ${lock ? `<div class="meta">🔒 Cấp ${a.lv}</div>` : `<button class="btn" data-action="buyAnimal" data-arg="${k}" ${n >= cap ? 'disabled' : ''}>${n >= cap ? 'Chuồng đầy' : 'Mua'}</button>`}</div>`;
     }).join('') + '</div>';
+  } else if (tab === 'fish') {
+    body = `<p class="muted">Bấm vào ao để câu. Khi phao chìm và hiện ❗, bấm vào ao (hoặc phím Space) thật nhanh để giật.
+      Mỗi lượt tốn 1 mồi (${money(BAIT_PRICE)}). Hôm nay ao còn <b>${S.fishLeft}/${FISH_PER_DAY}</b> lượt cá.</p>
+      <div class="grid">` + RODS.slice(1).map((r, i) => {
+        const id = i + 1, lock = S.lv < r.lv, own = S.rod >= id;
+        return `<div class="card ${lock ? 'locked' : ''} ${S.rod === id ? 'sel' : ''}"><div class="ic">🎣</div><div class="nm">${r.name}</div>
+        <div class="meta">${money(r.price)} · Giật trong ${r.window} giây${r.rare > 1 ? `<br>Cá quý dễ cắn gấp ${r.rare} lần` : ''}</div>
+        ${lock ? `<div class="meta">🔒 Cấp ${r.lv}</div>` : own ? '<div class="meta">✓ Đã có</div>' : `<button class="btn" data-action="buyRod" data-arg="${id}">Mua</button>`}</div>`;
+      }).join('') + `<div class="card"><div class="ic">🪱</div><div class="nm">Mồi câu</div><div class="meta">${money(BAIT_PRICE)}/mồi · Đang có: <b>${S.bait}</b></div>
+        <div><button class="btn" data-action="buyBait" data-arg="10">Mua 10</button><button class="btn" data-action="buyBait" data-arg="30">Mua 30</button></div></div></div>
+      <h3>Các loài trong ao</h3><div class="grid">` + Object.values(FISH).map(f => `<div class="card ${S.lv < f.lv ? 'locked' : ''}"><div class="ic">${f.icon}</div><div class="nm">${f.name}</div>
+        <div class="meta">Bán ${money(f.sell)}${f.xp ? ` · +${f.xp} XP` : ''}<br>${S.lv < f.lv ? `🔒 Cấp ${f.lv}` : f.w >= 18 ? 'Dễ câu' : f.w >= 7 ? 'Hơi hiếm' : f.w >= 3 ? 'Hiếm' : 'Cực hiếm'}</div></div>`).join('') + '</div>';
   } else {
     body = waterHtml();
   }
@@ -1395,6 +1523,7 @@ function showDayEnd() {
 }
 function sleep() {
   S.day++; S.min = 0; S.dayOver = false; S.stats = { income: 0, expense: 0, harvest: 0, delivered: 0 };
+  S.fishLeft = FISH_PER_DAY; R.fish = null;
   R.char.x = 520; R.char.y = 430;
   $('#modalBg').classList.add('hidden'); R.modal = null; R.paused = false;
   SND.rooster(); toast(`☀️ Ngày ${S.day} bắt đầu! Ò ó o...`, 'good'); updateHUD(true); saveGame();
@@ -1434,6 +1563,7 @@ function showHelp() {
     <p>🐔 <b>Chăn nuôi:</b> mua gia súc ở Cửa hàng, bấm vào chuồng để cho ăn, đợi rồi thu trứng, sữa, lông cừu... <b>Gà ăn 🌾 lúa mì</b> trong kho (1 bó/con) — lúa mì rẻ nhất, lớn nhanh, mỗi ô thu 2 bó.</p>
     <p>💰 <b>Kiếm tiền:</b> bán nông sản trong Kho, hoặc nhận <b>đơn hàng</b> ✉️ từ đối tác — giao đúng hạn để nhận tiền + VAT 15% + kinh nghiệm. Trễ hạn sẽ bị trừ tiền.</p>
     <p>🪧 <b>Mở rộng đất:</b> bạn có ${START_PLOTS} ô đất ban đầu. Bấm vào ô có biển 🪧 để mua thêm (từ ${money(plotPrice(START_PLOTS))}, ô sau đắt hơn ô trước ${money(10000)}). Mỗi cấp cho phép mua thêm 2 ô.</p>
+    <p>🎣 <b>Câu cá:</b> mua cần câu ở Cửa hàng, bấm vào ao, chờ phao chìm hiện ❗ rồi bấm ao (hoặc Space) thật nhanh. Mỗi loài giá khác nhau, cá quý mở theo cấp; mỗi ngày ao có ${FISH_PER_DAY} lượt cá.</p>
     <p>👥 <b>Bạn bè:</b> gửi mã nông trại cho bạn bè hoặc nhập mã của họ để ghé thăm — tưới giúp ô đang khát nước 💧 và tặng quà 🎁.</p>
     <p>⭐ Lên cấp để mở khoá cây trồng, vật nuôi, phân bón và quyền mua thêm ô đất.</p></div>
     <div style="text-align:center"><button class="btn" data-action="close">Bắt đầu thôi!</button></div>`, { kind: 'help' });
@@ -1454,6 +1584,13 @@ const ACTIONS = {
     openShop('animals');
   },
   shopTab: t => openShop(t),
+  buyRod: a => {
+    const id = +a, r = RODS[id];
+    if (!r || S.rod >= id || S.lv < r.lv) return;
+    if (spend(r.price)) { S.rod = id; if (!S.bait) S.bait = 5; SND.coin(); toast(`🎣 Đã mua ${r.name}${id === 1 ? ' (tặng kèm 5 mồi)' : ''}! Bấm vào ao để câu cá`, 'good'); saveGame(); }
+    openShop('fish');
+  },
+  buyBait: a => { const n = +a; if (spend(n * BAIT_PRICE)) { S.bait += n; SND.coin(); saveGame(); } openShop('fish'); },
   buyPlot: a => {
     const i = +a;
     if (i !== S.plotsOwned || S.lv < lvForPlot(i)) return;
@@ -1629,6 +1766,7 @@ function hitTest(x, y) {
   for (let i = 0; i < 24; i++) { const r = plotRect(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return { type: 'plot', i }; }
   for (const t in PENS) { const p = PENS[t]; if (x >= p.x && x <= p.x + p.w && y >= p.y - 16 && y <= p.y + p.h) return { type: 'pen', t }; }
   for (const k in BUILD) { const b = BUILD[k]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h + (k === 'well' ? 30 : 0)) return { type: 'build', k }; }
+  if (inPond(x, y)) return { type: 'pond' };
   return null;
 }
 cv.addEventListener('pointermove', e => {
@@ -1640,6 +1778,11 @@ cv.addEventListener('pointerdown', e => {
   SND.init();
   const p = toWorld(e), h = hitTest(p.x, p.y);
   if (e.pointerType === 'touch') { R.hover = h; setTimeout(() => { if (R.hover === h) R.hover = null; }, 250); }
+  if (R.fish) {                                     // đang câu: bấm ao = giật câu, bấm chỗ khác = thôi câu
+    if (h && h.type === 'pond') { tryHook(); return; }
+    stopFishing(true);
+  }
+  if (h && h.type === 'pond') { goFishing(p.x, p.y); return; }
   if (!h) { R.queue = []; R.char.tx = clamp(p.x, 24, W - 24); R.char.ty = clamp(p.y, 196, H - 6); return; }
   if (h.type === 'build') {
     if (h.k === 'house') openInventory();
@@ -1671,6 +1814,7 @@ addEventListener('keydown', e => {
   if (!R.modal && (k === '=' || k === '+')) setZoom((S.ui.zoom || 1) + 0.25);
   if (!R.modal && (k === '-' || k === '_')) setZoom((S.ui.zoom || 1) - 0.25);
   if (!R.modal && k === '0') setZoom(1);
+  if (!R.modal && k === ' ' && R.fish) { e.preventDefault(); tryHook(); }
   const map = { '1': 'hand', '2': 'seed', '3': 'water', '4': 'fert', '5': 'harvest' };
   if (map[k] && !R.modal) { S.tool = map[k]; updateToolbar(); }
 });

@@ -20,6 +20,7 @@ Chơi được trên máy tính và điện thoại (xoay ngang màn hình).
 - Nước tính theo m³, nạp lại có phí (thêm phí bơm gấp khi để bể cạn).
 - Đơn hàng từ đối tác: nhận / từ chối, có hạn giao, **hoá đơn VAT 15%**, giao trễ bị trừ tiền.
 - Mua thêm ô đất để mở rộng nông trại.
+- Câu cá ở ao: 9 loài giá khác nhau (cá rô 1.500đ … cá thần tài 90.000đ), cần câu tre / carbon, mồi câu, 15 lượt mỗi ngày.
 - Tiền tệ: Việt Nam đồng. Âm thanh tự tổng hợp: nhạc nền, gà gáy, chim hót, nước chảy...
 - Zoom vào nhân vật, bảng đơn hàng kéo thả / phóng to thu nhỏ.
 
