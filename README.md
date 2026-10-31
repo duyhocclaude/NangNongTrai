@@ -48,14 +48,15 @@ Các thông số cân bằng (giá, thời gian, nước, phân bón...) nằm �
 ## 👥 Ghé thăm nông trại bạn bè (coop)
 
 Mỗi người chơi có một **mã nông trại 6 ký tự** (nút 👥 Bạn bè). Nhập mã của bạn bè để sang nông trại của họ:
-thấy nhau đi lại theo thời gian thực, **tưới giúp** ô đang khát nước (dùng nước của mình, +1 XP) và **tặng quà** từ kho.
-Không thể gieo hạt hay thu hoạch ở nông trại người khác.
+thấy nhau đi lại theo thời gian thực, **tưới giúp** ô đang khát nước (dùng nước của mình, +1 XP) và **tặng quà** từ kho
+(bạn bè offline thì quà chờ đến khi họ vào game). Không thể gieo hạt hay thu hoạch ở nông trại người khác.
 
-Tính năng này cần một dự án Firebase (miễn phí):
+Tính năng này cần một dự án [Supabase](https://supabase.com) miễn phí:
 
-1. Vào <https://console.firebase.google.com> → **Add project** (tắt Google Analytics cũng được).
-2. **Build → Authentication → Get started → Sign-in method → Anonymous → Enable**.
-3. **Build → Realtime Database → Create database** → chọn vùng **Singapore (asia-southeast1)** → *Start in locked mode*.
-4. Tab **Rules** của Realtime Database: dán nội dung file [`database.rules.json`](database.rules.json) → **Publish**.
-5. **Project settings (⚙) → Your apps → Web (`</>`)** → đặt tên → **Register app** → chép khối `firebaseConfig`.
-6. Dán cấu hình đó vào file [`firebase-config.js`](firebase-config.js) (thay `null`).
+1. Vào <https://supabase.com/dashboard> → **Sign in with GitHub** → **New project** (vùng *Southeast Asia (Singapore)*, đặt mật khẩu database bất kỳ).
+2. **Authentication → Sign In / Providers** (hoặc *Auth settings*) → bật **Allow anonymous sign-ins** → Save.
+3. **SQL Editor → New query** → dán toàn bộ file [`supabase-setup.sql`](supabase-setup.sql) → **Run**.
+4. **Project Settings → API** (hoặc nút **Connect**) → chép **Project URL** và khoá **anon / publishable**.
+5. Điền 2 giá trị đó vào [`supabase-config.js`](supabase-config.js) (thay `null`).
+
+Dự án Supabase miễn phí sẽ tạm dừng nếu 7 ngày không ai chơi; vào Dashboard bấm **Restore** để bật lại.
