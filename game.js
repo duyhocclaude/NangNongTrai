@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.4.0';
+const GAME_VERSION = '1.4.1';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -181,19 +181,7 @@ function newState(name, outfit) {
 const nowAbs = () => (S.day - 1) * DAY_MIN + S.min;
 
 // ---------- Lưu / tải ----------
-// Bản test: mở game với ?test (hoặc test.html) -> đầy đủ tiền & vật phẩm, lưu riêng, không đụng bản chơi thật
-const TEST_MODE = new URLSearchParams(location.search).has('test');
-const SAVE_KEY = TEST_MODE ? 'nangnongtrai_test_v1' : 'nangnongtrai_save_v1';
-const TEST_LV = 12; // đủ để mở mọi cây, vật nuôi, phân bón và 24 ô đất
-
-function newTestState(name, outfit) {
-  const s = newState(name, outfit);
-  s.lv = TEST_LV; s.money = 100000000; s.plotsOwned = 24;
-  for (const t in ANIMALS) s.animals[t] = Array.from({ length: penCap(TEST_LV) }, () => ({ st: 'hungry', prog: 0 }));
-  for (const k in ITEMS) s.inv[k] = 50;
-  for (const k in FERTS) s.ferts[k] = 99;
-  return s;
-}
+let SAVE_KEY = 'nangnongtrai_save_v1';
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ } }
 function loadGame() { try { const t = localStorage.getItem(SAVE_KEY); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
 // ---------- Sao lưu ra file / khôi phục từ file ----------
@@ -416,12 +404,6 @@ function showStart() {
     $('#btnContinue').onclick = () => startGame(saved);
   } else box.innerHTML = '';
   buildOutfitPicker($('#startOutfits'), startOutfit, i => startOutfit = i);
-  if (TEST_MODE) {
-    $('#btnStart').textContent = '🧪 Tạo nhân vật test (đầy đủ tiền & vật phẩm)';
-    if (!$('#testNote')) $('.start-card .sub').insertAdjacentHTML('afterend',
-      `<div id="testNote" style="background:#fff3cd;border:2px dashed #e09a2c;border-radius:12px;padding:4px 10px;margin-bottom:6px;font-weight:700;color:#8a5a00">
-       🧪 BẢN TEST — 100 triệu đồng, cấp ${TEST_LV}, đủ 24 ô đất, chuồng đầy, mỗi vật phẩm 50 cái. Lưu riêng, không ảnh hưởng bản chơi thật.</div>`);
-  }
   $('#startName').focus();
 }
 
@@ -429,7 +411,7 @@ $('#btnStart').onclick = () => {
   const name = $('#startName').value.trim();
   if (!name) { $('#startName').focus(); $('#startName').style.borderColor = '#e53935'; return; }
   if (loadGame() && !confirm('Bắt đầu chơi mới sẽ xoá dữ liệu đã lưu. Tiếp tục?')) return;
-  startGame(TEST_MODE ? newTestState(name, startOutfit) : newState(name, startOutfit));
+  startGame(newState(name, startOutfit));
 };
 $('#startName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnStart').click(); });
 
@@ -444,8 +426,6 @@ function startGame(state) {
   $('#start').classList.add('hidden');
   ['#hud', '#moneyPill', '#topBtns', '#toolbar', '#tracker', '#zoomCtl'].forEach(s => $(s).classList.remove('hidden'));
   setZoom(S.ui.zoom || 1, false);
-  if (TEST_MODE && !$('#testBadge')) $('#moneyPill').insertAdjacentHTML('afterend',
-    '<div id="testBadge" style="position:absolute;left:340px;top:56px;background:#ffb300;color:#fff;font-weight:800;border-radius:10px;padding:0 10px;font-size:14px;box-shadow:0 2px 0 #c56f10">🧪 BẢN TEST</div>');
   R.started = true; R.paused = false;
   R.char.x = 520; R.char.y = 430; R.queue = [];
   R.nextOfferT = 0;
@@ -834,7 +814,7 @@ function update(dt) {
   updateAmbient(dt);
   if (!R.started || R.paused || R.portrait || S.dayOver) return;
 
-  const g = dt * GM_PER_SEC * (R.timeScale || 1);
+  const g = dt * GM_PER_SEC;
   S.min += g;
   if (S.min >= DAY_MIN) { S.min = DAY_MIN; S.dayOver = true; showDayEnd(); }
 
@@ -1409,19 +1389,7 @@ function sleep() {
 }
 
 function openMenu() {
-  const test = !TEST_MODE ? '' : `
-    <div class="toggle" style="background:#fff3cd;border:2px dashed #e09a2c;flex-direction:column;align-items:stretch;gap:4px">
-      <b>🧪 Công cụ test</b>
-      <div class="row" style="flex-wrap:wrap;gap:2px">
-        <button class="btn" data-action="cheat" data-arg="money">💰 +10 triệu</button>
-        <button class="btn" data-action="cheat" data-arg="level">⭐ +1 cấp</button>
-        <button class="btn" data-action="cheat" data-arg="items">📦 +20 mỗi vật phẩm</button>
-        <button class="btn blue" data-action="cheat" data-arg="water">💧 Đầy nước</button>
-        <button class="btn orange" data-action="cheat" data-arg="ripen">🌱 Cây & gia súc xong ngay</button>
-        <button class="btn orange" data-action="cheat" data-arg="orders">✉️ +3 đơn hàng</button>
-        <button class="btn ${R.timeScale > 1 ? 'red' : 'blue'}" data-action="cheat" data-arg="speed">⏩ Thời gian x${R.timeScale > 1 ? '10 (bấm về x1)' : '1 (bấm x10)'}</button>
-      </div></div>`;
-  openModal('☰ Menu', `${test}
+  openModal('☰ Menu', `
     <div class="toggle"><span>👧 Nhân vật: <b>${esc(S.name)}</b> — ${OUTFITS[S.outfit]}</span><button class="btn blue" data-action="openChar">Đổi tên / trang phục</button></div>
     <div class="toggle" style="background:#eaf6ff;border-color:#64b5f6"><span>📥 <b>Sao lưu dữ liệu ra file</b><br><small class="muted">File .json lưu vào thư mục Tải xuống (Downloads)</small></span><button class="btn blue" data-action="backup">Tải file</button></div>
     <div class="toggle" style="background:#fff4e5;border-color:#ffb74d"><span>📂 <b>Khôi phục từ file sao lưu</b></span><button class="btn orange" data-action="restore">Chọn file</button></div>
@@ -1506,21 +1474,6 @@ const ACTIONS = {
   endDay: () => { if (confirm('Kết thúc ngày làm việc ngay bây giờ?')) { closeModal(); S.dayOver = true; showDayEnd(); } },
   save: () => { saveGame(); toast('Đã lưu game 💾', 'good'); },
   backup: () => backupToFile(),
-  cheat: k => {
-    if (!TEST_MODE) return;
-    if (k === 'money') { S.money += 10000000; SND.coin(); toast('+10.000.000đ', 'good'); }
-    else if (k === 'level') gainXp(xpNeed(S.lv) - S.xp);
-    else if (k === 'items') { for (const i in ITEMS) addInv(i, 20); toast('+20 mỗi vật phẩm', 'good'); }
-    else if (k === 'water') { S.water = WATER.cap; SND.refill(); }
-    else if (k === 'ripen') {
-      S.plots.forEach(p => { if (p.crop) { p.prog = CROPS[p.crop].grow; p.wet = true; p.w2 = true; } });
-      for (const t in S.animals) S.animals[t].forEach(a => { if (a.st === 'busy') { a.st = 'ready'; a.prog = ANIMALS[t].time; } });
-      SND.pop(); toast('Cây đã chín, gia súc đang nuôi đã cho sản phẩm', 'good');
-    }
-    else if (k === 'orders') { S.offers = S.offers.slice(-1); genOffer(); genOffer(); genOffer(); toast('Đã có đơn hàng mới ✉️', 'good'); }
-    else if (k === 'speed') { R.timeScale = R.timeScale > 1 ? 1 : 10; toast(`Thời gian x${R.timeScale}`, 'good'); }
-    updateHUD(true); saveGame(); openMenu();
-  },
   restore: () => $('#restoreFile').click(),
   newGame: () => {
     if (!confirm('Xoá toàn bộ tiến trình và chơi lại từ đầu?')) return;
