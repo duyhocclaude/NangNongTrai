@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.5.2';
+const GAME_VERSION = '1.5.3';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -683,13 +683,25 @@ function water(i) {
   floater(r.x + r.w / 2, r.y + 8, `−${(WATER.plant * 1000).toFixed(0)} lít`, '#bbdefb');
   for (let k = 0; k < 8; k++) R.ripples.push({ x: r.x + rand(10, r.w - 10), y: r.y + rand(10, r.h - 10), t: 0, drop: true });
 }
+// Thu hoạch: gặt luôn mọi ô đã chín trên ruộng (ô vừa bấm trước)
 function harvest(i) {
-  const p = S.plots[i], c = CROPS[p.crop], r = plotRect(i);
-  const n = c.yield || 1;
-  addInv(p.crop, n); S.stats.harvest++;
-  floater(r.x + r.w / 2, r.y + 4, `+${n} ${c.icon}`, '#fff');
-  gainXp(c.xp, r.x + r.w / 2, r.y);
-  Object.assign(p, { crop: null, prog: 0, wet: false, w2: false, fert: 1 });
+  const ripe = [i];
+  for (let j = 0; j < S.plotsOwned; j++) {
+    const q = S.plots[j];
+    if (j !== i && q.crop && q.prog >= CROPS[q.crop].grow) ripe.push(j);
+  }
+  const got = {};
+  let xp = 0;
+  ripe.forEach(j => {
+    const p = S.plots[j], c = CROPS[p.crop], r = plotRect(j), n = c.yield || 1;
+    addInv(p.crop, n); S.stats.harvest++;
+    got[p.crop] = (got[p.crop] || 0) + n; xp += c.xp;
+    floater(r.x + r.w / 2, r.y + 4, `+${n} ${c.icon}`, '#fff');
+    Object.assign(p, { crop: null, prog: 0, wet: false, w2: false, fert: 1 });
+  });
+  const r = plotRect(i);
+  gainXp(xp, r.x + r.w / 2, r.y);
+  if (ripe.length > 1) toast(`🧺 Thu hoạch ${ripe.length} ô: ` + Object.entries(got).map(([k, n]) => `+${n} ${CROPS[k].icon}`).join(' '), 'good');
   SND.pop(); startAct('plant', '🧺');
 }
 function fertilize(i, fk) {
