@@ -90,16 +90,16 @@ const FERTS = {
 // w = độ phổ biến (càng lớn càng dễ câu). Cân đối: cần câu tre ở cấp 1 trung bình ~1.900đ/lượt (trừ mồi còn ~1.400đ),
 // mỗi ngày tối đa FISH_PER_DAY lượt -> câu cá là nguồn tiền phụ, không thay được trồng trọt.
 const FISH = {
-  ca_ro:       { name: 'Cá rô',       icon: '🐟', lv: 1, w: 40, sell: 1500,  xp: 1 },
-  ca_chep:     { name: 'Cá chép',     icon: '🎏', lv: 1, w: 26, sell: 3000,  xp: 2 },
-  giay_cu:     { name: 'Giày cũ',     icon: '👢', lv: 1, w: 6,  sell: 200,   xp: 0 },
-  tom:         { name: 'Tôm càng',    icon: '🦐', lv: 2, w: 18, sell: 4500,  xp: 2 },
-  ca_tram:     { name: 'Cá trắm',     icon: '🐟', lv: 3, w: 14, sell: 6000,  xp: 3 },
-  cua:         { name: 'Cua đồng',    icon: '🦀', lv: 4, w: 10, sell: 8000,  xp: 3 },
-  ca_loc:      { name: 'Cá lóc',      icon: '🐟', lv: 5, w: 7,  sell: 12000, xp: 4 },
-  con_sua:     { name: 'Con sứa',     icon: '🪼', lv: 6, w: 5,  sell: 15000, xp: 5 },
-  ca_koi:      { name: 'Cá koi',      icon: '🐠', lv: 7, w: 3,  sell: 35000, xp: 8 },
-  ca_than_tai: { name: 'Cá thần tài', icon: '🐡', lv: 9, w: 1,  sell: 90000, xp: 15 },
+  ca_ro:       { name: 'Cá rô',       icon: '🐟', lv: 1, w: 40, sell: 2000,  xp: 1 },
+  ca_chep:     { name: 'Cá chép',     icon: '🎏', lv: 1, w: 26, sell: 3500,  xp: 2 },
+  giay_cu:     { name: 'Giày cũ',     icon: '👢', lv: 1, w: 6,  sell: 500,   xp: 0 },
+  tom:         { name: 'Tôm càng',    icon: '🦐', lv: 2, w: 18, sell: 5000,  xp: 2 },
+  ca_tram:     { name: 'Cá trắm',     icon: '🐟', lv: 3, w: 14, sell: 6500,  xp: 3 },
+  cua:         { name: 'Cua đồng',    icon: '🦀', lv: 4, w: 10, sell: 8500,  xp: 3 },
+  ca_loc:      { name: 'Cá lóc',      icon: '🐟', lv: 5, w: 7,  sell: 12500, xp: 4 },
+  con_sua:     { name: 'Con sứa',     icon: '🪼', lv: 6, w: 5,  sell: 15500, xp: 5 },
+  ca_koi:      { name: 'Cá koi',      icon: '🐠', lv: 7, w: 3,  sell: 35500, xp: 8 },
+  ca_than_tai: { name: 'Cá thần tài', icon: '🐡', lv: 9, w: 1,  sell: 100000, xp: 15 },
 };
 // window = số giây để giật câu khi phao chìm; rare = nhân độ dễ câu loài quý (giá >= 8.000đ)
 const RODS = [null,
