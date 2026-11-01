@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.7.1';
+const GAME_VERSION = '1.7.2';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -1487,15 +1487,26 @@ function openWater() { openModal('💧 Bể nước', waterHtml(), { kind: 'wate
 function openInventory() {
   const need = {};
   S.orders.forEach(o => o.items.forEach(it => need[it.k] = (need[it.k] || 0) + it.qty));
-  const keys = Object.keys(S.inv).filter(k => S.inv[k] > 0);
-  let html = `<p class="muted">Bán nông sản ở chợ để lấy tiền, hoặc giữ lại để giao đơn hàng (đơn hàng trả giá cao hơn + VAT).</p><div class="list">`;
-  if (!keys.length) html += '<p>Kho đang trống. Hãy trồng cây và chăm sóc gia súc nhé! 🌱</p>';
-  keys.forEach(k => {
+  const has = k => S.inv[k] > 0 && ITEMS[k];
+  // xếp theo nhóm; trong nhóm giữ thứ tự như cửa hàng (rẻ / mở sớm trước)
+  const groups = [
+    ['🌾 Nông sản', Object.keys(CROPS).filter(has)],
+    ['🥚 Sản phẩm chăn nuôi', Object.keys(PRODUCTS).filter(has)],
+    ['🎣 Cá & hải sản', Object.keys(FISH).filter(has)],
+  ].filter(g => g[1].length);
+  let html = `<p class="muted">Bán nông sản ở chợ để lấy tiền, hoặc giữ lại để giao đơn hàng (đơn hàng trả giá cao hơn + VAT).</p>`;
+  if (!groups.length) html += '<p>Kho đang trống. Hãy trồng cây và chăm sóc gia súc nhé! 🌱</p>';
+  groups.forEach(([title, keys]) => {
+    const total = keys.reduce((s, k) => s + S.inv[k] * ITEMS[k].sell, 0);
+    html += `<h3>${title} <small class="muted">· ${keys.reduce((s, k) => s + S.inv[k], 0)} món · ${money(total)}</small></h3><div class="list">`;
+    keys.forEach(k => {
     const it = ITEMS[k], n = S.inv[k];
     html += `<div class="item"><div class="ic">${it.icon}</div><div class="grow"><b>${it.name}</b> × ${n}<div class="muted">Giá bán: ${money(it.sell)}/cái${need[k] ? ` · <span style="color:#e65100">Đơn hàng cần ${need[k]}</span>` : ''}${CROPS[k] && CROPS[k].note ? ` · <span style="color:#2e7d32">${CROPS[k].note}</span>` : ''}</div></div>
       <button class="btn orange" data-action="sell" data-arg="${k}|1">Bán 1</button><button class="btn orange" data-action="sell" data-arg="${k}|all">Bán hết (${money(n * it.sell)})</button></div>`;
+    });
+    html += '</div>';
   });
-  html += `</div><h3>🧪 Phân bón</h3><div class="row">${Object.entries(FERTS).map(([k, f]) => `<span>${f.short}: <b>${S.ferts[k] || 0}</b></span>`).join(' · ')}</div>`;
+  html += `<h3>🧪 Phân bón</h3><div class="row">${Object.entries(FERTS).map(([k, f]) => `<span>${f.short}: <b>${S.ferts[k] || 0}</b></span>`).join(' · ')}</div>`;
   openModal('📦 Kho', html, { kind: 'inv' });
 }
 
