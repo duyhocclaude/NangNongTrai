@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.7.0';
+const GAME_VERSION = '1.7.1';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -185,7 +185,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 // ---------- Trạng thái ----------
 let S = null;                 // trạng thái được lưu
 const R = {                   // trạng thái runtime
-  char: { x: 520, y: 430, tx: null, ty: null, dir: 1, face: 'down', moving: false, phase: 0, act: 0, actIcon: '', anim: null, animT: 0 },
+  char: { me: true, x: 520, y: 430, tx: null, ty: null, dir: 1, face: 'down', moving: false, phase: 0, act: 0, actIcon: '', anim: null, animT: 0 },
   queue: [], keys: {}, floaters: [], clouds: [], birds: [], ripples: [],
   animPos: {}, dog: { x: 120, y: 370, tx: 160, ty: 370, dir: 1, t: 0 },
   hover: null, paused: true, started: false, modal: null, pendingPlot: -1,
@@ -413,7 +413,8 @@ function loadImages() {
     const im = new Image(); im.onload = () => res(im); im.onerror = () => { store[i] = null; res(null); }; im.src = src; store[i] = im;
   });
   R.sheets = [];
-  return Promise.all(OUTFITS.flatMap((_, i) => [load(`assets/outfit${i}.png`, R.imgs, i), load(`assets/anim/outfit${i}_sheet.png`, R.sheets, i)]));
+  return Promise.all([...OUTFITS.flatMap((_, i) => [load(`assets/outfit${i}.png`, R.imgs, i), load(`assets/anim/outfit${i}_sheet.png`, R.sheets, i)]),
+    load('assets/anim/outfit0_fish_sheet.png', R, 'fishSheet')]);   // hoạt ảnh câu cá (bộ mặc định)
 }
 
 function buildOutfitPicker(container, selected, onPick) {
@@ -857,13 +858,21 @@ function cancelOrder(id) {
    Bấm vào ao -> đi ra mép ao -> quăng câu -> chờ phao chìm (❗) -> bấm ao / phím Space trong khoảng
    thời gian của cần câu để giật. Bấm chỗ khác khi chưa có cá cắn thì thôi câu (được trả lại mồi). */
 const inPond = (x, y, k = 1) => ((x - POND.x) / (POND.rx * k)) ** 2 + ((y - POND.y) / (POND.ry * k)) ** 2 <= 1;
+// Hoạt ảnh câu cá (assets/anim/outfit0_fish_sheet.png: hàng 0 quay trái, hàng 1 quay phải, 14 frame):
+// 0-3 giơ cần & quăng, 4-8 chờ phao, 9 cá cắn (giật mình), 10-11 kéo lên & nước bắn, 12-13 cá treo trên dây
+const FISH_ANIM = { cast: [0, 1, 2, 3], wait: [4, 5, 6, 7, 8, 7, 6, 5], bite: [9, 8], reel: [10, 11, 12, 13], miss: [10, 11] };
+const FISH_FPS = { cast: 8, wait: 5, bite: 10, reel: 9, miss: 8 };
+const CAST_TIME = FISH_ANIM.cast.length / FISH_FPS.cast, REEL_TIME = 1.1, MISS_TIME = 0.45;
+const BOBBER = { dx: 50, dy: 5 };   // vị trí phao trong frame so với chân nhân vật (px của ô 128)
+
 function fishSpot(px, py) {
-  // phao: điểm bấm, kéo vào trong lòng ao; chỗ đứng: mép ao phía nhân vật
-  let bx = px, by = py;
-  if (!inPond(bx, by, 0.8)) { const a = Math.atan2((by - POND.y) / POND.ry, (bx - POND.x) / POND.rx); bx = POND.x + Math.cos(a) * POND.rx * 0.75; by = POND.y + Math.sin(a) * POND.ry * 0.75; }
-  const a = Math.atan2((R.char.y - POND.y) / (POND.ry + 30), (R.char.x - POND.x) / (POND.rx + 30));
-  const sx = clamp(POND.x + Math.cos(a) * (POND.rx + 26), 24, W - 24), sy = clamp(POND.y + Math.sin(a) * (POND.ry + 22), 196, H - 6);
-  return { bx, by, sx, sy };
+  // đứng ở mép trái hoặc phải ao (phía nhân vật đang đứng), quay mặt vào ao để phao rơi xuống nước
+  const faceRight = R.char.x < POND.x;
+  const y = clamp(py, POND.y - POND.ry * 0.55, POND.y + POND.ry * 0.55);
+  const hw = POND.rx * Math.sqrt(Math.max(0, 1 - ((y - POND.y) / POND.ry) ** 2));
+  const sx = clamp(faceRight ? POND.x - hw - 16 : POND.x + hw + 16, 24, W - 24), sy = clamp(y, 196, H - 6);
+  const k = CHAR_SIZE / CELL, dir = faceRight ? 1 : -1;
+  return { sx, sy, dir, bx: sx + dir * BOBBER.dx * k, by: sy - BOBBER.dy * k };
 }
 function goFishing(px, py) {
   const rod = RODS[S.rod];
@@ -879,13 +888,13 @@ function castLine(sp) {
     if (!spend(BAIT_PRICE)) return;
     floater(R.char.x, R.char.y - 110, `Mua mồi −${money(BAIT_PRICE)}`, '#ffcdd2');
   } else S.bait--;
-  R.char.dir = sp.bx >= R.char.x ? 1 : -1; R.char.face = R.char.dir > 0 ? 'right' : 'left';
+  R.char.dir = sp.dir; R.char.face = sp.dir > 0 ? 'right' : 'left';
   R.fish = { phase: 'cast', t: 0, biteAt: rand(2.5, 7), bx: sp.bx, by: sp.by, win: RODS[S.rod].window };
   SND.cast();
 }
 function stopFishing(refund) {
   if (!R.fish) return;
-  if (refund && R.fish.phase !== 'bite') S.bait++;
+  if (refund && (R.fish.phase === 'cast' || R.fish.phase === 'wait')) S.bait++;   // chưa có cá cắn thì trả mồi
   R.fish = null;
 }
 function rollFish() {
@@ -897,44 +906,62 @@ function rollFish() {
 }
 function tryHook() {
   const f = R.fish; if (!f) return false;
+  if (f.phase === 'reel' || f.phase === 'miss') return true;
   if (f.phase !== 'bite') { floater(f.bx, f.by - 30, 'Chờ phao chìm đã!', '#fff'); return true; }
   const k = rollFish(), fi = FISH[k];
   addInv(k, 1); S.fishLeft--; S.stats.fish = (S.stats.fish || 0) + 1;
-  floater(f.bx, f.by - 20, `+1 ${fi.icon} ${fi.name} (${money(fi.sell)})`, '#fff');
-  if (fi.xp) gainXp(fi.xp, R.char.x, R.char.y - 100);
-  if (fi.sell >= 30000) { toast(`🎉 Câu được ${fi.icon} ${fi.name}! Bán được ${money(fi.sell)}`, 'big'); SND.levelup(); }
-  else if (k === 'giay_cu') toast('👢 Ôi, câu phải chiếc giày cũ...');
+  f.phase = 'reel'; f.t = 0; f.catch = k;                       // kéo lên rồi mới hiện cá
   SND.splash();
   for (let i = 0; i < 6; i++) R.ripples.push({ x: f.bx + rand(-12, 12), y: f.by + rand(-6, 6), t: 0 });
-  R.fish = null;
-  if (S.fishLeft > 0) floater(R.char.x, R.char.y - 125, `🎣 Còn ${S.fishLeft} lượt hôm nay`, '#e3f2fd');
   return true;
+}
+function finishCatch(f) {
+  const fi = FISH[f.catch];
+  floater(R.char.x, R.char.y - 120, `+1 ${fi.icon} ${fi.name} (${money(fi.sell)})`, '#fff');
+  if (fi.xp) gainXp(fi.xp, R.char.x, R.char.y - 140);
+  if (fi.sell >= 30000) { toast(`🎉 Câu được ${fi.icon} ${fi.name}! Bán được ${money(fi.sell)}`, 'big'); SND.levelup(); }
+  else if (f.catch === 'giay_cu') toast('👢 Ôi, câu phải chiếc giày cũ...');
+  else SND.coin();
+  if (S.fishLeft > 0) floater(R.char.x, R.char.y - 145, `🎣 Còn ${S.fishLeft} lượt hôm nay`, '#e3f2fd');
 }
 function updateFishing(dt) {
   const f = R.fish; if (!f) return;
   if ((window.COOP_VISIT && COOP_VISIT.active) || R.queue.length || R.char.tx !== null || R.char.moving) { stopFishing(true); return; }
   f.t += dt;
-  if (f.phase === 'cast' && f.t > 0.45) { f.phase = 'wait'; f.t = 0; R.ripples.push({ x: f.bx, y: f.by, t: 0 }); SND.plop(); }
-  else if (f.phase === 'wait' && f.t > f.biteAt) { f.phase = 'bite'; f.t = 0; SND.plop(); SND.plop(0.12); }
+  if (f.phase === 'cast' && f.t > CAST_TIME) { f.phase = 'wait'; f.t = 0; R.ripples.push({ x: f.bx, y: f.by, t: 0 }); SND.plop(); }
+  else if (f.phase === 'wait') { if (Math.random() < dt * 0.6) R.ripples.push({ x: f.bx + rand(-4, 4), y: f.by, t: 0 }); if (f.t > f.biteAt) { f.phase = 'bite'; f.t = 0; SND.plop(); SND.plop(0.12); } }
   else if (f.phase === 'bite' && f.t > f.win) {
-    floater(f.bx, f.by - 20, 'Cá chạy mất rồi! 💨', '#ffcdd2'); SND.error(); R.fish = null;
+    floater(f.bx, f.by - 20, 'Cá chạy mất rồi! 💨', '#ffcdd2'); SND.error(); f.phase = 'miss'; f.t = 0;
   }
+  else if (f.phase === 'reel' && f.t > REEL_TIME) { R.fish = null; finishCatch(f); }
+  else if (f.phase === 'miss' && f.t > MISS_TIME) R.fish = null;
+}
+// frame câu cá của nhân vật mình (null nếu trang phục không có hoạt ảnh câu cá)
+function fishFrame() {
+  const f = R.fish;
+  if (!f || !R.fishSheet || !OUTFIT_ANIM[S.outfit].full) return null;
+  const seq = FISH_ANIM[f.phase], i = Math.floor(f.t * FISH_FPS[f.phase]);
+  const col = f.phase === 'wait' || f.phase === 'bite' ? seq[i % seq.length] : seq[Math.min(i, seq.length - 1)];
+  return { row: R.char.face === 'left' ? 0 : 1, col, fish: true };
 }
 function drawFishing() {
   const f = R.fish; if (!f) return;
-  const ch = R.char, d = ch.dir, hx = ch.x + d * 10, hy = ch.y - 58, tx = ch.x + d * 52, ty = ch.y - 112;
-  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
-  // phao bay ra khi quăng, chìm xuống khi cá cắn
-  const k = f.phase === 'cast' ? Math.min(1, f.t / 0.45) : 1;
-  const bob = f.phase === 'bite' ? 4 + Math.sin(f.t * 30) * 3 : Math.sin(R.time * 3) * 1.2;
-  const bx = tx + (f.bx - tx) * k, by = ty + (f.by - ty) * k - Math.sin(k * Math.PI) * 40 + bob;
-  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo((tx + bx) / 2, Math.max(ty, by) + 20, bx, by); ctx.stroke();
-  ctx.fillStyle = '#e53935'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, 0, Math.PI); ctx.fill();
+  if (!fishFrame()) {
+    // trang phục chưa có hoạt ảnh câu cá: vẽ cần, dây và phao bằng nét vẽ
+    const ch = R.char, d = ch.dir, hx = ch.x + d * 10, hy = ch.y - 58, tx = ch.x + d * 52, ty = ch.y - 112;
+    ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+    if (f.phase !== 'reel' && f.phase !== 'miss') {
+      const k = f.phase === 'cast' ? Math.min(1, f.t / CAST_TIME) : 1, bob = f.phase === 'bite' ? 4 + Math.sin(f.t * 30) * 3 : Math.sin(R.time * 3) * 1.2;
+      const bx = tx + (f.bx - tx) * k, by = ty + (f.by - ty) * k - Math.sin(k * Math.PI) * 40 + bob;
+      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo((tx + bx) / 2, Math.max(ty, by) + 20, bx, by); ctx.stroke();
+      ctx.fillStyle = '#e53935'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by - 2, 5, 0, Math.PI); ctx.fill();
+    }
+  }
   if (f.phase === 'bite') {
-    bubble(f.bx, f.by - 34 - Math.abs(Math.sin(f.t * 12)) * 4, '❗');
-    ctx.fillStyle = '#ffeb3b'; ctx.fillRect(f.bx - 22, f.by - 58, 44 * (1 - f.t / f.win), 5);
+    bubble(f.bx, f.by - 40 - Math.abs(Math.sin(f.t * 12)) * 4, '❗');
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(f.bx - 23, f.by - 65, 46, 7);
+    ctx.fillStyle = '#ffeb3b'; ctx.fillRect(f.bx - 22, f.by - 64, 44 * (1 - f.t / f.win), 5);
   }
 }
 Object.assign(SND, {
@@ -1252,6 +1279,7 @@ function drawQueueMarks() {
 // Chọn hàng & frame của sprite sheet theo trạng thái nhân vật
 function charFrame() {
   const ch = R.char, oa = OUTFIT_ANIM[S.outfit];
+  if (ch.me && R.fish) { const ff = fishFrame(); if (ff) return ff; }   // đang câu cá
   if (oa.full) {
     if (ch.anim) {
       const side = ch.face === 'left' ? 'left' : 'right', [row, n] = ANIM_FULL[ch.anim + '_' + side];
@@ -1276,7 +1304,7 @@ function drawChar() {
       if (ch.moving && (ch.face === 'left' || ch.face === 'right')) ctx.rotate((ch.face === 'left' ? -1 : 1) * 0.06);
       if (ch.act > 0) { const sq = Math.sin((1 - ch.act / 0.45) * Math.PI); ctx.scale(1 + sq * 0.04, 1 - sq * 0.08); }
     }
-    ctx.drawImage(sheet, f.col * CELL, f.row * CELL, CELL, CELL, -oa.cx * k, -FEET_Y * k, CELL * k, CELL * k);
+    ctx.drawImage(f.fish ? R.fishSheet : sheet, f.col * CELL, f.row * CELL, CELL, CELL, -oa.cx * k, -FEET_Y * k, CELL * k, CELL * k);
     ctx.restore();
   } else {
     // dự phòng khi chưa tải được sprite sheet: dùng ảnh tĩnh
