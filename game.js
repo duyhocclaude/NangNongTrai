@@ -4,7 +4,7 @@
    ========================================================= */
 
 // Phiên bản hiển thị trong Menu — nhớ đổi cùng số ?v= trong index.html
-const GAME_VERSION = '1.7.2';
+const GAME_VERSION = '1.8.0';
 
 // ---------- Hằng số thời gian ----------
 const W = 1280, H = 720;
@@ -18,11 +18,11 @@ const PARTNERS = ['Em Hà Đan Phượng', 'Anh Duy Ô Diên', 'Chị Trang', '�
 
 const OUTFITS = [
   'Trang phục mặc định', 'Trang phục làm vườn', 'Váy hoa nhẹ nhàng', 'Thư giãn thường ngày',
-  'Dịu dàng tiểu thư', 'Năng động', 'Đi chơi / hẹn hò'
+  'Dịu dàng tiểu thư', 'Năng động', 'Đi chơi / hẹn hò', 'Nữ hiệp sĩ (pixel)'
 ];
 // Tạm thời chỉ cho chọn trang phục có đủ hoạt ảnh (4 hướng + gieo hạt + tưới cây).
 // Thêm số thứ tự vào đây để mở lại các bộ khác.
-const ENABLED_OUTFITS = [0];
+const ENABLED_OUTFITS = [0, 7];
 
 // ---------- Hoạt ảnh nhân vật ----------
 // Sprite sheet: assets/anim/outfitN_sheet.png, ô 128x128, mỗi hàng là một animation [hàng, số frame].
@@ -35,7 +35,9 @@ const ANIM_FULL = {
 };
 const ANIM_LITE = { idle_down: [0, 4], walk_down: [1, 8] };
 // tâm thân theo chiều ngang trong ô (đo từ frame) để nhân vật đứng đúng vị trí, không lệch khi đổi bộ
-const OUTFIT_ANIM = [{ full: true, cx: 64 }, { cx: 73.7 }, { cx: 64.6 }, { cx: 63.8 }, { cx: 60.5 }, { cx: 62.5 }, { cx: 60.2 }];
+const OUTFIT_ANIM = [{ full: true, cx: 64 }, { cx: 73.7 }, { cx: 64.6 }, { cx: 63.8 }, { cx: 60.5 }, { cx: 62.5 }, { cx: 60.2 },
+  // Nữ hiệp sĩ pixel-art: ô 64x64, nhìn thẳng; hàng 0 đi (6), 1 gieo hạt (8), 2 tưới (6). Phóng to giữ nét pixel.
+  { pixel: true, cell: 64, cx: 31.3, feetY: 60.5, size: 154, rows: { walk: [0, 6], plant: [1, 8], water: [2, 6] }, fps: { plant: 12, water: 10 } }];
 const STRIDE_PX = 13;                 // đi được 13px thì sang frame bước tiếp -> chân không bị trượt
 const IDLE_SEQ = [0, 1, 2, 3, 2, 1];  // thở nhẹ qua lại, không bị giật từ frame cuối về đầu
 const IDLE_FPS = 6;
@@ -421,7 +423,7 @@ function buildOutfitPicker(container, selected, onPick) {
   container.style.gridTemplateColumns = `repeat(${ENABLED_OUTFITS.length}, minmax(0, ${ENABLED_OUTFITS.length < 4 ? '180px' : '1fr'}))`;
   container.style.justifyContent = 'center';
   container.innerHTML = ENABLED_OUTFITS.map(i =>
-    `<div class="outfit${i === selected ? ' sel' : ''}" data-i="${i}"><img src="assets/outfit${i}.png" alt=""><span>${OUTFITS[i]}</span></div>`).join('');
+    `<div class="outfit${i === selected ? ' sel' : ''}" data-i="${i}"><img src="assets/outfit${i}.png" alt=""${OUTFIT_ANIM[i].pixel ? ' style="image-rendering:pixelated"' : ''}><span>${OUTFITS[i]}</span></div>`).join('');
   container.querySelectorAll('.outfit').forEach(el => el.addEventListener('click', () => {
     container.querySelectorAll('.outfit').forEach(e => e.classList.remove('sel'));
     el.classList.add('sel'); onPick(+el.dataset.i); SND.click();
@@ -1016,9 +1018,10 @@ function update(dt) {
 
 // Bắt đầu một hành động (gieo/tưới/thu hoạch...): chạy trọn hoạt ảnh rồi mới đi tiếp
 function startAct(kind, icon) {
-  const ch = R.char, full = S && OUTFIT_ANIM[S.outfit].full;
+  const ch = R.char, oa = S && OUTFIT_ANIM[S.outfit];
   ch.anim = kind; ch.animT = 0; ch.actIcon = icon;
-  if (full) { ch.face = ch.dir < 0 ? 'left' : 'right'; ch.act = ANIM_FULL[kind + '_left'][1] / ACT_FPS[kind]; }
+  if (oa && oa.full) { ch.face = ch.dir < 0 ? 'left' : 'right'; ch.act = ANIM_FULL[kind + '_left'][1] / ACT_FPS[kind]; }
+  else if (oa && oa.pixel) ch.act = oa.rows[kind][1] / oa.fps[kind];
   else ch.act = 0.45;
 }
 function faceFrom(dx, dy) {
@@ -1288,6 +1291,11 @@ function charFrame() {
     if (ch.moving) { const [row, n] = ANIM_FULL['walk_' + ch.face]; return { row, col: Math.floor(ch.phase) % n }; }
     return { row: ANIM_FULL['idle_' + ch.face][0], col: IDLE_SEQ[Math.floor(R.time * IDLE_FPS) % IDLE_SEQ.length] };
   }
+  if (oa.pixel) {
+    if (ch.anim && oa.rows[ch.anim]) { const [row, n] = oa.rows[ch.anim]; return { row, col: Math.min(n - 1, Math.floor(ch.animT * oa.fps[ch.anim])) }; }
+    const [row, n] = oa.rows.walk;
+    return { row, col: ch.moving ? Math.floor(ch.phase) % n : 0 };   // không có frame đứng: dùng frame đi đầu tiên
+  }
   // bộ chỉ có hướng xuống: dùng chung cho mọi hướng
   if (ch.moving) return { row: ANIM_LITE.walk_down[0], col: Math.floor(ch.phase) % ANIM_LITE.walk_down[1] };
   return { row: ANIM_LITE.idle_down[0], col: IDLE_SEQ[Math.floor(R.time * IDLE_FPS) % IDLE_SEQ.length] };
@@ -1297,14 +1305,16 @@ function drawChar() {
   const ch = R.char, sheet = R.sheets[S.outfit], oa = OUTFIT_ANIM[S.outfit];
   ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(ch.x, ch.y, 20, 6, 0, 0, 7); ctx.fill();
   if (sheet) {
-    const f = charFrame(), k = CHAR_SIZE / CELL;
+    const f = charFrame(), cell = oa.cell || CELL, k = (oa.size || CHAR_SIZE) / cell, feet = oa.feetY || FEET_Y;
     ctx.save(); ctx.translate(ch.x, ch.y);
     if (!oa.full) {
-      // bộ không có frame quay ngang: nghiêng nhẹ theo hướng đi, nhún khi làm việc
+      // bộ không có frame quay ngang: nghiêng nhẹ theo hướng đi
       if (ch.moving && (ch.face === 'left' || ch.face === 'right')) ctx.rotate((ch.face === 'left' ? -1 : 1) * 0.06);
-      if (ch.act > 0) { const sq = Math.sin((1 - ch.act / 0.45) * Math.PI); ctx.scale(1 + sq * 0.04, 1 - sq * 0.08); }
+      // bộ không có hoạt ảnh làm việc: nhún khi làm việc
+      if (!oa.pixel && ch.act > 0) { const sq = Math.sin((1 - ch.act / 0.45) * Math.PI); ctx.scale(1 + sq * 0.04, 1 - sq * 0.08); }
     }
-    ctx.drawImage(f.fish ? R.fishSheet : sheet, f.col * CELL, f.row * CELL, CELL, CELL, -oa.cx * k, -FEET_Y * k, CELL * k, CELL * k);
+    if (oa.pixel) ctx.imageSmoothingEnabled = false;   // giữ nét vuông của ảnh pixel khi phóng to
+    ctx.drawImage(f.fish ? R.fishSheet : sheet, f.col * cell, f.row * cell, cell, cell, -oa.cx * k, -feet * k, cell * k, cell * k);
     ctx.restore();
   } else {
     // dự phòng khi chưa tải được sprite sheet: dùng ảnh tĩnh
@@ -1312,7 +1322,7 @@ function drawChar() {
     if (img) { ctx.save(); ctx.translate(ch.x, ch.y); ctx.scale(ch.dir < 0 ? -1 : 1, 1); ctx.drawImage(img, -w / 2, -h, w, h); ctx.restore(); }
   }
   // biểu tượng dụng cụ: bộ đầy đủ đã có bình tưới / cây trong hoạt ảnh nên chỉ hiện cho việc khác
-  const ownProp = oa.full && (ch.actIcon === '🌱' || ch.actIcon === '🚿');
+  const ownProp = (oa.full || oa.pixel) && (ch.actIcon === '🌱' || ch.actIcon === '🚿');
   if (ch.act > 0 && ch.actIcon && !ownProp) emoji(ctx, ch.actIcon, ch.x + ch.dir * 30, ch.y - 70 + Math.sin(ch.animT * 12) * 3, 22, ch.dir < 0);
   // biển tên gỗ dưới chân như ảnh mẫu
   ctx.font = 'bold 14px "Baloo 2",sans-serif'; ctx.textAlign = 'center';
@@ -1325,6 +1335,7 @@ function drawChar() {
 function drawAvatar() {
   const a = $('#avatarCv').getContext('2d'), img = R.imgs[S.outfit];
   a.clearRect(0, 0, 72, 72); a.fillStyle = '#ffe9ef'; a.fillRect(0, 0, 72, 72);
+  a.imageSmoothingEnabled = !OUTFIT_ANIM[S.outfit].pixel;
   if (img) { const s = img.width * 0.78; a.drawImage(img, (img.width - s) / 2, 0, s, s, 0, 2, 72, 72); }
 }
 
